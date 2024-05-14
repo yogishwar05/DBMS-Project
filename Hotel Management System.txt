@@ -1,0 +1,122 @@
+-- Create the database
+CREATE DATABASE IF NOT EXISTS HotelManagementSystem;
+
+-- Use the created database
+USE HotelManagementSystem;
+
+-- Create the tables
+CREATE TABLE IF NOT EXISTS Rooms (
+    room_id INT PRIMARY KEY,
+    room_type VARCHAR(50),
+    status VARCHAR(50),
+    price_per_night DECIMAL(10, 2)
+);
+
+CREATE TABLE IF NOT EXISTS Guests (
+    guest_id INT PRIMARY KEY,
+    name VARCHAR(100),
+    email VARCHAR(100),
+    phone VARCHAR(20)
+);
+
+CREATE TABLE IF NOT EXISTS Reservations (
+    reservation_id INT PRIMARY KEY,
+    guest_id INT,
+    room_id INT,
+    check_in_date DATE,
+    check_out_date DATE,
+    FOREIGN KEY (guest_id) REFERENCES Guests(guest_id),
+    FOREIGN KEY (room_id) REFERENCES Rooms(room_id)
+);
+
+CREATE TABLE IF NOT EXISTS Staff (
+    staff_id INT PRIMARY KEY,
+    name VARCHAR(100),
+    position VARCHAR(100),
+    contact VARCHAR(20)
+);
+
+CREATE TABLE IF NOT EXISTS Billing (
+    bill_id INT PRIMARY KEY,
+    reservation_id INT,
+    total_amount DECIMAL(10, 2),
+    FOREIGN KEY (reservation_id) REFERENCES Reservations(reservation_id)
+);
+
+CREATE TABLE IF NOT EXISTS Payments (
+    payment_id INT PRIMARY KEY,
+    bill_id INT,
+    amount_paid DECIMAL(10, 2),
+    payment_date DATE,
+    FOREIGN KEY (bill_id) REFERENCES Billing(bill_id)
+);
+
+-- Create the views
+CREATE OR REPLACE VIEW GuestReservationDetails AS
+SELECT G.guest_id, G.name AS guest_name, G.email, G.phone,
+       R.reservation_id, R.room_id, R.check_in_date, R.check_out_date
+FROM Guests G
+JOIN Reservations R ON G.guest_id = R.guest_id;
+
+
+CREATE OR REPLACE VIEW RoomOccupancy AS
+SELECT room_id, 
+       COUNT(CASE WHEN check_in_date <= '2024-05-04' AND check_out_date >= '2024-05-04' THEN 1 END) AS occupancy
+FROM Reservations
+GROUP BY room_id;
+
+CREATE OR REPLACE VIEW StaffDirectory AS
+SELECT staff_id, name, position, contact
+FROM Staff;
+
+CREATE OR REPLACE VIEW BillingDetails AS
+SELECT B.*, P.amount_paid, P.payment_date
+FROM Billing B
+JOIN Payments P ON B.bill_id = P.bill_id;
+
+CREATE OR REPLACE VIEW RoomRevenueStatistics AS
+SELECT R.room_type, 
+       COALESCE(SUM(B.total_amount), 0) AS total_revenue,
+       COALESCE(COUNT(RV.reservation_id), 0) AS total_bookings
+FROM Rooms R
+LEFT JOIN Reservations RV ON R.room_id = RV.room_id
+LEFT JOIN Billing B ON RV.reservation_id = B.reservation_id
+GROUP BY R.room_type;
+
+
+-- Insert sample data
+INSERT INTO Rooms (room_id, room_type, status, price_per_night)
+VALUES
+(101, 'Single', 'Vacant', 1500),
+(102, 'Double', 'Occupied', 2500),
+(103, 'Suite', 'Vacant', 4000);
+
+INSERT INTO Guests (guest_id, name, email, phone)
+VALUES
+(1, 'Prashanth Sahu', 'prashanth_sahu@gmail.com', '+1234567890'),
+(2, 'Rishi Arasada', 'rishi_arasada@gmail.com', '+1987654321'),
+(3, 'Jasti Kushal', 'jasti_kushal@gmail.com', '+1122334455');
+
+INSERT INTO Reservations (reservation_id, guest_id, room_id, check_in_date, check_out_date)
+VALUES
+(1, 1, 101, '2024-04-15', '2024-05-04'),
+(2, 2, 102, '2024-04-30', '2024-05-06'),
+(3, 3, 103, '2024-04-25', '2024-05-10');
+
+INSERT INTO Staff (staff_id, name, position, contact)
+VALUES
+(1, 'Prashanth', 'Manager', '+919391702991'),
+(2, 'Rishi', 'Receptionist', '+919392685601'),
+(3, 'Kushal', 'Concierge', '+919490851787');
+
+INSERT INTO Billing (bill_id, reservation_id, total_amount)
+VALUES
+(1, 1, 1500),
+(2, 2, 2500),
+(3, 3, 4000);
+
+INSERT INTO Payments (payment_id, bill_id, amount_paid, payment_date)
+VALUES
+(1, 1, 300, '2024-04-15'),
+(2, 2, 200, '2024-04-30'),
+(3, 3, 300, '2024-04-25');
